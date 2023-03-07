@@ -114,7 +114,8 @@ def convert_2Djoints_to_gaussian_heatmaps_torch(joints2D,
     device = joints2D.device
 
     xx, yy = torch.meshgrid(torch.arange(img_wh, device=device),
-                            torch.arange(img_wh, device=device))
+                            torch.arange(img_wh, device=device),
+                            indexing='ij')
     xx = xx[None, None, :, :].float()
     yy = yy[None, None, :, :].float()
 

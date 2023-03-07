@@ -10,14 +10,11 @@ from pytorch3d.structures import Meshes
 from pytorch3d.renderer import (
     PerspectiveCameras,
     OrthographicCameras,
-    PointLights,
     RasterizationSettings,
     MeshRasterizer,
-    HardPhongShader,
     TexturesUV,
-    TexturesVertex,
-    BlendParams)
-
+    BlendParams,
+    SoftSilhouetteShader)
 
 def preprocess_densepose_UV(uv_path, batch_size):
     DP_UV = loadmat(uv_path)
@@ -69,8 +66,7 @@ def preprocess_densepose_UV(uv_path, batch_size):
 
     return verts_uv_offset, verts_iuv, verts_map, faces_densepose
 
-
-class TexturedIUVRenderer(nn.Module):
+class SilhouetteRenderer(nn.Module):
     def __init__(self,
                  device,
                  batch_size,
@@ -82,17 +78,13 @@ class TexturedIUVRenderer(nn.Module):
                  orthographic_scale=0.9,
                  blur_radius=0.0,
                  faces_per_pixel=1,
+                 sigma=1e-4,
+                 gamma=1e-4,
                  bin_size=None,
                  max_faces_per_bin=None,
                  perspective_correct=False,
                  cull_backfaces=False,
-                 clip_barycentric_coords=None,
-                 render_rgb=False,
-                 light_t=((0.0, 0.0, -2.0),),
-                 light_ambient_color=((0.5, 0.5, 0.5),),
-                 light_diffuse_color=((0.3, 0.3, 0.3),),
-                 light_specular_color=((0.2, 0.2, 0.2),),
-                 background_color=(0.0, 0.0, 0.0)):
+                 clip_barycentric_coords=None):
         """
         :param img_wh: Size of rendered image.
         :param blur_radius: Float distance in the range [0, 2] used to expand the face
@@ -152,8 +144,8 @@ class TexturedIUVRenderer(nn.Module):
         if cam_R is None:
             # Rotating 180° about z-axis to make pytorch3d camera convention same as what I've been using so far in my perspective_project_torch/NMR/pyrender
             # (Actually pyrender also has a rotation defined in the renderer to make it same as NMR.)
-            cam_R = torch.tensor([[-1., 0., 0.],
-                                  [0., -1., 0.],
+            cam_R = torch.tensor([[1., 0., 0.],
+                                  [0., 1., 0.],
                                   [0., 0., 1.]], device=device).float()
             cam_R = cam_R[None, :, :].expand(batch_size, -1, -1)
         if cam_t is None:
@@ -178,20 +170,6 @@ class TexturedIUVRenderer(nn.Module):
                                                image_size=((img_wh, img_wh),),
                                                in_ndc=False)
 
-        # Lights for textured RGB render - pre-defined here but can be specified in forward pass if lights will vary (e.g. random cameras)
-        self.render_rgb = render_rgb
-        if self.render_rgb:
-            self.lights_rgb_render = PointLights(device=device,
-                                                 location=light_t,
-                                                 ambient_color=light_ambient_color,
-                                                 diffuse_color=light_diffuse_color,
-                                                 specular_color=light_specular_color)
-        # Lights for IUV render - don't want lighting to affect the rendered image.
-        self.lights_iuv_render = PointLights(device=device,
-                                             ambient_color=[[1, 1, 1]],
-                                             diffuse_color=[[0, 0, 0]],
-                                             specular_color=[[0, 0, 0]])
-
         # Rasterizer
         raster_settings = RasterizationSettings(image_size=img_wh,
                                                 blur_radius=blur_radius,
@@ -204,24 +182,19 @@ class TexturedIUVRenderer(nn.Module):
         self.rasterizer = MeshRasterizer(cameras=self.cameras, raster_settings=raster_settings)  # Specify camera in forward pass
 
         # Shader for textured RGB output and IUV output
-        blend_params = BlendParams(background_color=background_color)
-        self.iuv_shader = HardPhongShader(device=device, cameras=self.cameras,
-                                          lights=self.lights_iuv_render, blend_params=blend_params)
-        if self.render_rgb:
-            self.rgb_shader = HardPhongShader(device=device, cameras=self.cameras,
-                                              lights=self.lights_rgb_render, blend_params=blend_params)
+        blend_params = BlendParams(sigma=sigma, gamma=gamma)
+        self.shader = SoftSilhouetteShader(blend_params=blend_params)
+
+        self.textures = torch.ones(1, 1200, 800, 3, device=device).float() * 0.7
 
         self.to(device)
 
     def to(self, device):
         # Rasterizer and shader have submodules which are not of type nn.Module
         self.rasterizer.to(device)
-        if self.render_rgb:
-            self.rgb_shader.to(device)
-        self.iuv_shader.to(device)
+        self.shader.to(device)
 
-    def forward(self, vertices, textures=None, cam_t=None, orthographic_scale=None, lights_rgb_settings=None,
-                verts_features=None):
+    def forward(self, vertices, cam_t=None, orthographic_scale=None):
         """
         Render a batch of textured RGB images and IUV images from a batch of meshes.
 
@@ -255,23 +228,10 @@ class TexturedIUVRenderer(nn.Module):
         if orthographic_scale is not None and self.projection_type == 'orthographic':
             self.cameras.focal_length = orthographic_scale * (self.img_wh / 2.0)
 
-        if lights_rgb_settings is not None and self.render_rgb:
-            self.lights_rgb_render.location = lights_rgb_settings['location']
-            self.lights_rgb_render.ambient_color = lights_rgb_settings['ambient_color']
-            self.lights_rgb_render.diffuse_color = lights_rgb_settings['diffuse_color']
-            self.lights_rgb_render.specular_color = lights_rgb_settings['specular_color']
-
         vertices = vertices[:, self.verts_map, :]  # From SMPL verts indexing (0 to 6889) to DP verts indexing (0 to 7828), verts shape is (B, 7829, 3)
 
-        textures_iuv = TexturesVertex(verts_features=self.verts_iuv)
+        textures_iuv = TexturesUV(maps=self.textures, faces_uvs=self.faces_densepose, verts_uvs=self.verts_uv_offset)
         meshes_iuv = Meshes(verts=vertices, faces=self.faces_densepose, textures=textures_iuv)
-        if self.render_rgb:
-            if verts_features is not None:
-                verts_features = verts_features[:, self.verts_map, :]  # From SMPL verts indexing (0 to 6889) to DP verts indexing (0 to 7828), verts shape is (B, 7829, 3)
-                textures_rgb = TexturesVertex(verts_features=verts_features)
-            else:
-                textures_rgb = TexturesUV(maps=textures, faces_uvs=self.faces_densepose, verts_uvs=self.verts_uv_offset)
-            meshes_rgb = Meshes(verts=vertices, faces=self.faces_densepose, textures=textures_rgb)
 
         # Rasterize
         fragments = self.rasterizer(meshes_iuv, cameras=self.cameras)
@@ -279,13 +239,7 @@ class TexturedIUVRenderer(nn.Module):
 
         # Render RGB and IUV outputs
         output = {}
-        output['iuv_images'] = self.iuv_shader(fragments, meshes_iuv, lights=self.lights_iuv_render)[:, :, :, :3]
-        if self.render_rgb:
-            output_images = self.rgb_shader(fragments, meshes_rgb, lights=self.lights_rgb_render)
-            output['rgb_images'] = torch.clamp(output_images[:, :, :, :3], max=1.0)
-            output['alpha_images'] = torch.clamp(output_images[:, :, :, 3], max=1.0)
-
-        # Get depth image
+        output['silhouettes'] = self.shader(fragments, meshes_iuv)[..., 3]
         output['depth_images'] = zbuffers
 
         return output

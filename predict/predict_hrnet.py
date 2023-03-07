@@ -70,7 +70,7 @@ def predict_hrnet(hrnet_model,
                 pred_height = all_pred_heights[0]
                 pred_width = all_pred_widths[0]
             except IndexError:
-                print("Could not find person bounding box - using entire image!")
+                # print("Could not find person bounding box - using entire image!")
                 pred_centre = torch.tensor(image.shape[1:], device=image.device, dtype=torch.float32) * 0.5
                 pred_height = torch.tensor(image_height, device=image.device, dtype=torch.float32)
                 pred_width = torch.tensor(image_width, device=image.device, dtype=torch.float32)

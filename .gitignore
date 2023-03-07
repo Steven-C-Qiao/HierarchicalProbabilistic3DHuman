@@ -17,3 +17,12 @@ output*/*
 
 #Experiments
 experiments/*
+
+# VSCode
+.vscode/
+
+# SMPL and STAR files
+model_files/SMPL_*
+model_files/smpl/
+model_files/smpl_python2/*
+model_files/star_*

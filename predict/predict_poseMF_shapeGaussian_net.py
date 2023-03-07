@@ -274,6 +274,8 @@ def predict_poseMF_shapeGaussian_net(pose_shape_model,
             combined_vis_fig[visualise_wh:2*visualise_wh, 3*visualise_wh:4*visualise_wh] = reposed_body_vis_rgb_rot90
             vis_save_path = os.path.join(save_dir, image_fname)
             cv2.imwrite(vis_save_path, combined_vis_fig[:, :, ::-1] * 255)
+            cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_tpose.png', reposed_body_vis_rgb * 255)
+            cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_tpose_rot90.png', reposed_body_vis_rgb_rot90 * 255)
 
             if visualise_uncropped:
                 # Uncropped visualisation by projecting 3D body onto original image

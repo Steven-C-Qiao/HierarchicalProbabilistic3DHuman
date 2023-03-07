@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
-
+import matplotlib.pyplot as plt
 
 def convert_bbox_corners_to_centre_hw(bbox_corners):
     """
@@ -377,3 +377,66 @@ def batch_crop_pytorch_affine(input_wh,
 
     return cropped_dict
 
+def resize_with_aspect_ratio(image, height=None, width=None, interpolation=cv2.INTER_LINEAR):
+    if height is None and width is None:
+        return image
+    elif height is None:
+        scale = width / image.shape[1]
+        target_height = int(image.shape[0] * scale)
+        target_width = int(width)
+    elif width is None:
+        scale = height / image.shape[0]
+        target_height = int(height)
+        target_width = int(image.shape[1] * scale)
+    else:
+        target_height = int(height)
+        target_width = int(width)
+    return cv2.resize(image, (target_width, target_height), interpolation=interpolation)
+
+def resize_and_pad(image, target_size, upscale=False, interpolation=cv2.INTER_LINEAR):
+    height_diff = target_size[0] - image.shape[0]
+    width_diff = target_size[1] - image.shape[1]
+
+    if height_diff < 0 or width_diff < 0:
+        if height_diff < width_diff:
+            image = resize_with_aspect_ratio(image, height=target_size[0], interpolation=interpolation)
+        else:
+            image = resize_with_aspect_ratio(image, width=target_size[1], interpolation=interpolation)
+    elif upscale and height_diff > 0 and width_diff > 0:
+        if height_diff < width_diff:
+            image = resize_with_aspect_ratio(image, height=target_size[0], interpolation=interpolation)
+        else:
+            image = resize_with_aspect_ratio(image, width=target_size[1], interpolation=interpolation)
+
+    height_diff = target_size[0] - image.shape[0]
+    width_diff = target_size[1] - image.shape[1]
+
+    top = np.floor(height_diff / 2).astype('int')
+    bottom = np.ceil(height_diff / 2).astype('int')
+    left = np.floor(width_diff / 2).astype('int')
+    right = np.ceil(width_diff / 2).astype('int')
+
+    final = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, (0, 0, 0))
+    return final
+
+def convert_to_silhouette(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    filter = cv2.bilateralFilter(gray, 9, 100, 100)
+
+    filter = cv2.morphologyEx(filter, cv2.MORPH_OPEN, np.ones((5,5), np.uint8), iterations=1)
+    _, thresh = cv2.threshold(filter, 25, 255, cv2.THRESH_BINARY)
+    
+    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    contours = contours[:min(len(contours), 3)]
+
+    skin_mask = np.zeros(image.shape[:2])
+    cv2.fillPoly(skin_mask, pts=[contours[0]], color=255)
+    if len(contours) > 1 and cv2.contourArea(contours[1]) > 50:
+        cv2.fillPoly(skin_mask, pts=contours[1:], color=0)
+    return skin_mask
+    
+    
+    

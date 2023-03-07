@@ -91,8 +91,8 @@ def run_predict(device,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image_dir', '-I', type=str, help='Path to directory of test images.')
-    parser.add_argument('--save_dir', '-S', type=str, help='Path to directory where test outputs will be saved.')
+    parser.add_argument('--image_dir', '-I', type=str, help='Path to directory of test images.', default='/data/cornucopia/em803/dxa_analysis/data/smpl_gen/input')
+    parser.add_argument('--save_dir', '-S', type=str, help='Path to directory where test outputs will be saved.', default='/data/cornucopia/em803/dxa_analysis/data/smpl_gen/output')
     parser.add_argument('--pose_shape_weights', '-W3D', type=str, default='./model_files/poseMF_shapeGaussian_net_weights.tar')
     parser.add_argument('--pose_shape_cfg', type=str, default=None)
     parser.add_argument('--pose2D_hrnet_weights', '-W2D', type=str, default='./model_files/pose_hrnet_w48_384x288.pth')
