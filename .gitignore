@@ -26,3 +26,6 @@ model_files/SMPL_*
 model_files/smpl/
 model_files/smpl_python2/*
 model_files/star_*
+
+# Cache files
+*__pycache__*
