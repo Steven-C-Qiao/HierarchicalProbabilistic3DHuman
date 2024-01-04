@@ -275,7 +275,7 @@ class TexturedIUVRenderer(nn.Module):
 
         # Rasterize
         fragments = self.rasterizer(meshes_iuv, cameras=self.cameras)
-        zbuffers = fragments.zbuf[:, :, :, 0]
+        #zbuffers = fragments.zbuf[:, :, :, 0]
 
         # Render RGB and IUV outputs
         output = {}
@@ -285,6 +285,6 @@ class TexturedIUVRenderer(nn.Module):
             output['rgb_images'] = torch.clamp(rgb_images, max=1.0)
 
         # Get depth image
-        output['depth_images'] = zbuffers
+        #output['depth_images'] = zbuffers
 
         return output

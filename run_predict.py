@@ -4,7 +4,6 @@ import torchvision
 import numpy as np
 import argparse
 
-from models.poseMF_shapeGaussian_net import PoseMFShapeGaussianNet
 from models.smpl_official import SMPL
 from models.pose2D_hrnet import PoseHighResolutionNet
 from models.canny_edge_detector import CannyEdgeDetector
@@ -13,7 +12,8 @@ from configs.poseMF_shapeGaussian_net_config import get_poseMF_shapeGaussian_cfg
 from configs.pose2D_hrnet_config import get_pose2D_hrnet_cfg_defaults
 from configs import paths
 
-from predict.predict_poseMF_shapeGaussian_net import predict_poseMF_shapeGaussian_net
+from models.poseMF_shapeGaussian_net import PoseMFShapeGaussianNet
+from predict.predict_baseline import predict_poseMF_shapeGaussian_net
 
 
 def run_predict(device,
@@ -59,7 +59,7 @@ def run_predict(device,
     # SMPL model
     print('\nUsing {} SMPL model with {} shape parameters.'.format(gender, str(pose_shape_cfg.MODEL.NUM_SMPL_BETAS)))
     smpl_model = SMPL(paths.SMPL,
-                      batch_size=1,
+                      batch_size=6,
                       gender=gender,
                       num_betas=pose_shape_cfg.MODEL.NUM_SMPL_BETAS).to(device)
     smpl_immediate_parents = smpl_model.parents.tolist()
@@ -91,11 +91,11 @@ def run_predict(device,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image_dir', '-I', type=str, help='Path to directory of test images.')
+    parser.add_argument('--image_dir', '-I', type=str, default='/scratch/nazgul/cq244/hkpd_depth/my_data/images/')
     parser.add_argument('--save_dir', '-S', type=str, help='Path to directory where test outputs will be saved.')
-    parser.add_argument('--pose_shape_weights', '-W3D', type=str, default='./model_files/poseMF_shapeGaussian_net_weights.tar')
+    parser.add_argument('--pose_shape_weights', '-W3D', type=str, default="/scratches/nazgul/cq244/hkpd_depth/model_files/poseMF_shapeGaussian_net_weights.tar")
     parser.add_argument('--pose_shape_cfg', type=str, default=None)
-    parser.add_argument('--pose2D_hrnet_weights', '-W2D', type=str, default='./model_files/pose_hrnet_w48_384x288.pth')
+    parser.add_argument('--pose2D_hrnet_weights', '-W2D', type=str, default='/scratches/nazgul/cq244/hkpd_depth/model_files/pose_hrnet_w48_384x288.pth')
     parser.add_argument('--cropped_images', '-C', action='store_true', help='Images already cropped and centred.')
     parser.add_argument('--visualise_samples', '-VS', action='store_true')
     parser.add_argument('--visualise_uncropped', '-VU', action='store_true')
