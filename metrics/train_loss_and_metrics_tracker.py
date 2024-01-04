@@ -26,7 +26,8 @@ class TrainingLossesAndMetricsTracker:
                                   'train_MPJPE-SC', 'val_MPJPE-SC',
                                   'train_MPJPE-PA', 'val_MPJPE-PA',
                                   'train_joints2D-L2E', 'val_joints2D-L2E',
-                                  'train_joints2Dsamples-L2E', 'val_joints2Dsamples-L2E']
+                                  'train_joints2Dsamples-L2E', 'val_joints2Dsamples-L2E',
+                                  'train_silh', 'val_silh']
 
         self.metrics_to_track = metrics_to_track
         self.img_wh = img_wh
@@ -148,6 +149,7 @@ class TrainingLossesAndMetricsTracker:
                                                                              target_reposed_vertices)
             pvet_sc_batch = np.linalg.norm(pred_reposed_vertices_sc - target_reposed_vertices, axis=-1)  # (bs, 6890)
             self.loss_metric_sums[split + '_PVE-T-SC'] += np.sum(pvet_sc_batch)  # scalar
+            print(np.mean(pvet_sc_batch))
 
         if 'MPJPE' in self.metrics_to_track:
             mpjpe_batch = np.linalg.norm(pred_dict['joints3D'] - target_dict['joints3D'], axis=-1)  # (bsize, 14) or (bsize, num views, 14)

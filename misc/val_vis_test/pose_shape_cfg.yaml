@@ -1,0 +1,167 @@
+DATA:
+  BBOX_SCALE_FACTOR: 1.2
+  BBOX_THRESHOLD: 0.95
+  EDGE_GAUSSIAN_SIZE: 5
+  EDGE_GAUSSIAN_STD: 1.0
+  EDGE_NMS: true
+  EDGE_THRESHOLD: 0.0
+  HEATMAP_GAUSSIAN_STD: 4.0
+  PROXY_REP_SIZE: 256
+LOSS:
+  NUM_SAMPLES: 8
+  SAMPLE_ON_CPU: true
+  STAGE1:
+    J2D_LOSS_ON: means
+    MF_OVERREG: 1.005
+    REDUCTION: mean
+    WEIGHTS:
+      GLOB_ROTMATS: 5000.0
+      JOINTS2D: 5000.0
+      JOINTS3D: 0.0
+      POSE: 80.0
+      SHAPE: 50.0
+      SILHOUETTE: 200.0
+      VERTS3D: 0.0
+  STAGE2:
+    J2D_LOSS_ON: means+samples
+    MF_OVERREG: 1.005
+    REDUCTION: mean
+    WEIGHTS:
+      GLOB_ROTMATS: 5000.0
+      JOINTS2D: 30000.0
+      JOINTS3D: 5000.0
+      POSE: 10.0
+      SHAPE: 80.0
+      SILHOUETTE: 2000.0
+      VERTS3D: 5000.0
+  STAGE_CHANGE_EPOCH: 66
+MODEL:
+  DELTA_I: true
+  DELTA_I_WEIGHT: 1.0
+  EMBED_DIM: 256
+  NUM_IN_CHANNELS: 18
+  NUM_RESNET_LAYERS: 18
+  NUM_SMPL_BETAS: 10
+TRAIN:
+  BATCH_SIZE: 72
+  EPOCHS_PER_SAVE: 5
+  LR: 0.0001
+  NUM_EPOCHS: 300
+  NUM_WORKERS: 2
+  PIN_MEMORY: true
+  SYNTH_DATA:
+    AUGMENT:
+      BBOX:
+        DELTA_CENTRE_RANGE:
+        - -5
+        - 5
+        DELTA_SCALE_RANGE:
+        - -0.3
+        - 0.2
+      CAM:
+        DELTA_Z_RANGE:
+        - -0.5
+        - 0.5
+        XY_STD: 0.05
+      PROXY_REP:
+        DELTA_J2D_DEV_RANGE:
+        - -6
+        - 6
+        EXTREME_CROP_PROB: 0.1
+        JOINTS_SWAP_PROB: 0.1
+        JOINTS_TO_SWAP:
+        - - 5
+          - 6
+        - - 11
+          - 12
+        OCCLUDE_BOTTOM_PROB: 0.02
+        OCCLUDE_BOX_DIM: 48
+        OCCLUDE_BOX_PROB: 0.1
+        OCCLUDE_TOP_PROB: 0.005
+        OCCLUDE_VERTICAL_PROB: 0.05
+        REMOVE_APPENDAGE_JOINTS_PROB: 0.5
+        REMOVE_JOINTS_INDICES:
+        - 7
+        - 8
+        - 9
+        - 10
+        - 13
+        - 14
+        - 15
+        - 16
+        REMOVE_JOINTS_PROB: 0.1
+        REMOVE_PARTS_CLASSES:
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        - 7
+        - 8
+        - 9
+        - 10
+        - 11
+        - 12
+        - 13
+        - 14
+        - 15
+        - 16
+        - 17
+        - 18
+        - 19
+        - 20
+        - 21
+        - 22
+        - 23
+        - 24
+        REMOVE_PARTS_PROBS:
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.05
+        - 0.05
+        - 0.05
+        - 0.05
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.05
+        - 0.05
+        - 0.05
+        - 0.05
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.1
+        - 0.05
+        - 0.05
+      RGB:
+        LIGHT_AMBIENT_RANGE:
+        - 0.4
+        - 0.8
+        LIGHT_DIFFUSE_RANGE:
+        - 0.4
+        - 0.8
+        LIGHT_LOC_RANGE:
+        - 0.05
+        - 3.0
+        LIGHT_SPECULAR_RANGE:
+        - 0.0
+        - 0.5
+        OCCLUDE_BOTTOM_PROB: 0.02
+        OCCLUDE_TOP_PROB: 0.005
+        OCCLUDE_VERTICAL_PROB: 0.05
+        PIXEL_CHANNEL_NOISE: 0.2
+      SMPL:
+        SHAPE_STD: 1.25
+    CROP_INPUT: true
+    FOCAL_LENGTH: 300.0
+    MEAN_CAM_T:
+    - 0.0
+    - -0.2
+    - 2.5

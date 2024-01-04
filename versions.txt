@@ -1,0 +1,91 @@
+MULTIN_V2 
+    multiple image inputs, and regress uniform shape for each input group of images
+
+multin_v1:
+    dedicated resnets, does not train 
+
+multin_v2:
+    dirty workaround with 4 resnets, 3 for shape 1 for all, too clunky. 
+    used for debugging 
+    dir: kyuban multin_v2_003 
+    STOPPED, v2 not good enough 
+
+multin_v3:
+    single resnet encoder, uniform shape
+    multin_v3_001
+        RUNNING nazgul tmux 3
+        81 epochs now
+        constrained view inputs
+        resuming again from 90 epochs 
+            discard input view constraints
+            add STAGE1 to 120epochs
+    multin_v3_2 
+        RUNNING kyuban tmux 
+        no image input constraints
+
+multin_v4:
+    multin_v3, with silhouette loss
+    multin_v4_001
+        STOPPED 
+        first experiment
+    multin_v4_002
+        RESUMED from EPOCH 20
+        solved:
+            silh from iuv_in, rendering and debugging
+        problem:
+            silh loss scaled wrongly at the start [solved]
+    multin_v4_003
+        STOPPED
+        solved:
+            silh loss weighting
+        problem:
+            flipped target_vertices_mode due to silh rendering upside down,
+            but messes up loss tracking
+        now went back to multin_v4_002
+
+multin_v5:
+    corrected shape_features
+    reverted to constrained views
+    silh loss not fixed
+    running with run_train_v4, multin_v5
+            
+
+
+
+BASELINE
+Train Loss: 245.67899, Val Loss: 535.52195
+Train PVE: 0.07812, Val PVE: 0.08465
+Train PVE-SC: 0.07065, Val PVE-SC: 0.07743
+Train PVE-T-SC: 0.00970, Val PVE-T-SC: 0.01003
+Train MPJPE: 0.06534, Val MPJPE: 0.07076
+Train MPJPE-SC: 0.05628, Val MPJPE-SC: 0.06160
+Train MPJPE-PA: 0.04618, Val MPJPE-PA: 0.05200
+Train joints2D-L2E: 7.11026, Val joints2D-L2E: 6.77745
+Best epoch val metrics updated to  {'PVE-SC': 0.0774257016940459, 'MPJPE-PA': 0.05200259311733176}
+Best model weights updated!
+Model saved! Best Val Metrics:
+ {'PVE-SC': 0.0774257016940459, 'MPJPE-PA': 0.05200259311733176} 
+in epoch 0
+
+BASELINE SAME PEOPLES
+Finished epoch.
+Train Loss: 433.59227, Val Loss: 685.73886
+Val PVE:        0.08838
+Val PVE-SC:     0.08066
+Val PVE-T-SC:   0.01013
+Val MPJPE:      0.07508
+Val MPJPE-SC:   0.06629
+Val MPJPE-PA:   0.05607
+Val joints2D-L2E: 7.33940
+
+BASELINE COMBINE PREDICTIONS
+Finished epoch.
+Val Loss:       652.29876
+Val PVE:        0.08771
+Val PVE-SC:     0.08089
+Val PVE-T-SC:   0.00860
+Val MPJPE:      0.07441
+Val MPJPE-SC:   0.06674
+Val MPJPE-PA:   0.05658
+Val joints2D-L2E: 7.62298
+
