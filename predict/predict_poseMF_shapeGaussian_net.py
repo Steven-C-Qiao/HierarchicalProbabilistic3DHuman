@@ -238,6 +238,8 @@ def predict_poseMF_shapeGaussian_net(pose_shape_model,
             combined_vis_cols = 4
             combined_vis_fig = np.zeros((combined_vis_rows * visualise_wh, combined_vis_cols * visualise_wh, 3),
                                         dtype=body_vis_rgb.dtype)
+            combined_vis_fig_2 = np.zeros((1 * visualise_wh, 3 * visualise_wh, 3),
+                                        dtype=body_vis_rgb.dtype)
             # Cropped input image
             combined_vis_fig[:visualise_wh, :visualise_wh] = cropped_for_proxy_rgb.cpu().detach().numpy()[0].transpose(1, 2, 0)
 
@@ -269,11 +271,18 @@ def predict_poseMF_shapeGaussian_net(pose_shape_model,
             combined_vis_fig[:visualise_wh, 2*visualise_wh:3*visualise_wh] = body_vis_rgb_rot180
             combined_vis_fig[visualise_wh:2*visualise_wh, 2*visualise_wh:3*visualise_wh] = body_vis_rgb_rot270
 
+            combined_vis_fig_2[:visualise_wh, :visualise_wh] = body_vis_rgb
+
             # T-pose 3D body
             combined_vis_fig[:visualise_wh, 3*visualise_wh:4*visualise_wh] = reposed_body_vis_rgb
             combined_vis_fig[visualise_wh:2*visualise_wh, 3*visualise_wh:4*visualise_wh] = reposed_body_vis_rgb_rot90
+            
+            combined_vis_fig_2[:visualise_wh, visualise_wh:2*visualise_wh] = reposed_body_vis_rgb
+            combined_vis_fig_2[:visualise_wh, 2*visualise_wh:3*visualise_wh] = reposed_body_vis_rgb_rot90
+
             vis_save_path = os.path.join(save_dir, image_fname)
             cv2.imwrite(vis_save_path, combined_vis_fig[:, :, ::-1] * 255)
+            cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_presentation.png', combined_vis_fig_2[:, :, ::-1] * 255)
             cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_tpose.png', reposed_body_vis_rgb * 255)
             cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_tpose_rot90.png', reposed_body_vis_rgb_rot90 * 255)
 

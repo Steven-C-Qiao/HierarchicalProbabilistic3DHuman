@@ -5,10 +5,11 @@ import numpy as np
 import argparse
 import pandas as pd
 import torch.multiprocessing as mp
-import signal
+import traceback
 import functools
 import queue
 import time
+import re
 
 from pathlib import Path
 
@@ -114,32 +115,43 @@ def run_optimize(device=None,
 
     # Dataframe for non image data
     data_df = pd.read_csv(csv_path)
-    data_df = data_df[['Serno', 'Sex', 'DEXAmethod', 'E_Average_Waist', 'E_Average_Hip', 'E_Height']]
+    data_df['Serno'] = data_df['Serno'].astype(str)
+
+    column_names = set(data_df.columns)
+    column_names.remove('Serno')
+    search = re.compile('_P2$')
+    renamed = {k:re.sub('_P2$', '', k) for k in column_names if search.search(k)}
+    if len(renamed) > 0:
+        data_df.rename(columns=renamed, inplace=True)
 
     # ------------------------- Predict -------------------------
     torch.manual_seed(0)
     np.random.seed(0)
     print('Started processing {} IDs on device {}'.format(len(subset_ids), device))
-    value = optimize_poseMF_shapeGaussian_net(pose_shape_model_male=pose_shape_dist_model_male,
-                                            pose_shape_model_female=pose_shape_dist_model_female,
-                                            pose_shape_cfg=pose_shape_cfg,
-                                            optimization_cfg=optimization_cfg,
-                                            smpl_model_male=smpl_model_male,
-                                            smpl_model_female=smpl_model_female,
-                                            hrnet_model=hrnet_model,
-                                            hrnet_cfg=pose2D_hrnet_cfg,
-                                            edge_detect_model=edge_detect_model,
-                                            device=device,
-                                            data_df=data_df,
-                                            image_dir=image_dir,
-                                            save_dir=save_dir,
-                                            visualize_images=visualize_images,
-                                            visualize_losses=visualize_losses,
-                                            print_debug=print_debug,
-                                            subset_ids=subset_ids,
-                                            object_detect_model=object_detect_model,
-                                            multiprocessing=multiprocessing,
-                                            joints2Dvisib_threshold=joints2Dvisib_threshold)
+    try:
+        value = optimize_poseMF_shapeGaussian_net(pose_shape_model_male=pose_shape_dist_model_male,
+                                                pose_shape_model_female=pose_shape_dist_model_female,
+                                                pose_shape_cfg=pose_shape_cfg,
+                                                optimization_cfg=optimization_cfg,
+                                                smpl_model_male=smpl_model_male,
+                                                smpl_model_female=smpl_model_female,
+                                                hrnet_model=hrnet_model,
+                                                hrnet_cfg=pose2D_hrnet_cfg,
+                                                edge_detect_model=edge_detect_model,
+                                                device=device,
+                                                data_df=data_df,
+                                                image_dir=image_dir,
+                                                save_dir=save_dir,
+                                                visualize_images=visualize_images,
+                                                visualize_losses=visualize_losses,
+                                                print_debug=print_debug,
+                                                subset_ids=subset_ids,
+                                                object_detect_model=object_detect_model,
+                                                multiprocessing=multiprocessing,
+                                                joints2Dvisib_threshold=joints2Dvisib_threshold
+                                                )
+    except Exception as e:
+        print(traceback.format_exc())
     
     if processing_queue:
         processing_queue.put(value)
@@ -153,7 +165,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_dir', '-I', type=str, help='Path to directory of test images.', default='../data/smpl_gen/input') # '../data/raw_images'
     parser.add_argument('--save_dir', '-S', type=str, help='Path to directory where test outputs will be saved.', default='../data/smpl_gen/output')
-    parser.add_argument('--csv_path', '-CSV', type=str, help='Path to csv where numerical data is stored.', default='../data/data.csv')
+    parser.add_argument('--csv_path', '-CSV', type=str, help='Path to csv where numerical data is stored.', default='../data/smpl_gen/input/data.csv')
     parser.add_argument('--pose_shape_weights_dir', '-W3D', type=str, default='./model_files/')
     parser.add_argument('--pose_shape_cfg', type=str, default=None)
     parser.add_argument('--pose2D_hrnet_weights', '-W2D', type=str, default='./model_files/pose_hrnet_w48_384x288.pth')
@@ -163,7 +175,7 @@ if __name__ == '__main__':
     parser.add_argument('--visualize_losses', '-VL', action='store_true')
     parser.add_argument('--print_debug', '-PD', action='store_true')
     parser.add_argument('--subset_ids', '-SI', type=str, nargs='*', help='Subset of IDs to process')
-    parser.add_argument('--gpus', type=int, nargs='+', help='Subset of IDs to process', default=[1, 2])
+    parser.add_argument('--gpus', type=int, nargs='+', help='Subset of IDs to process', default=[0])
     args = parser.parse_args()
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
@@ -176,12 +188,23 @@ if __name__ == '__main__':
         subset_ids = [Path(path).stem for path in os.listdir(args.image_dir) if path.endswith(('.jpg', '.png'))]
 
         df = pd.read_csv(args.csv_path)
-        df = df[df['Serno'].isin(subset_ids)]   
-        df = df[df['E_Average_Waist'] > 0]
-        df = df[df['E_Average_Hip'] > 0]
-        df = df[df['E_Height'] > 0]
+        df['Serno'] = df['Serno'].astype(str)
+        
+        if 'E_Average_Waist_P2' in df.columns:
+            df = df[df['Serno'].isin([re.sub('_P2$', '', id) for id in subset_ids])]
+            df = df[df['E_Average_Waist_P2'] > 0]
+            df = df[df['E_Average_Hip_P2'] > 0]
+            df = df[df['E_Height_P2'] > 0]
 
-        subset_ids = df['Serno'].to_numpy().flatten()
+            subset_ids = [id + '_P2' for id in df['Serno'].to_numpy().flatten()]
+        else:
+            df = df[df['Serno'].isin(subset_ids)]
+            print('LENGTH', len(df))
+            df = df[df['E_Average_Waist'] > 0]
+            df = df[df['E_Average_Hip'] > 0]
+            df = df[df['E_Height'] > 0]
+
+            subset_ids = df['Serno'].to_numpy().flatten()
         del df
     else:
         subset_ids = args.subset_ids
@@ -193,7 +216,7 @@ if __name__ == '__main__':
         print('Running for {} IDs'.format(len(subset_ids)))
         
         id_divisions = np.array_split(subset_ids, n_processes)
-        devices = [torch.device('cuda:{}'.format(device_num)) for device_num in range(n_processes)]
+        devices = [torch.device('cuda:{}'.format(args.gpus[device_num])) for device_num in range(n_processes)]
         return_values = mp.Queue()
 
         target_function = functools.partial(
@@ -210,8 +233,7 @@ if __name__ == '__main__':
             visualize_losses=args.visualize_losses,
             multiprocessing=True,
             processing_queue=return_values,
-            print_debug=args.print_debug,
-        )
+            print_debug=args.print_debug)
 
         subprocesses = []
 

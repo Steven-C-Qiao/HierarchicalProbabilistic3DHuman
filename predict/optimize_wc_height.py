@@ -4,9 +4,12 @@ import torch
 import torch.optim as optim
 import cv2
 import matplotlib.pyplot as plt
+import matplotlib
 import pandas as pd
 import json
 import collections
+import re
+
 from pathlib import Path
 from tqdm import tqdm
 from smplx.lbs import batch_rodrigues
@@ -51,7 +54,8 @@ def optimize_poseMF_shapeGaussian_net(pose_shape_model_male,
                                      print_debug=False,
                                      subset_ids=None,
                                      multiprocessing=False,
-                                     visualise_wh=512):
+                                     visualise_wh=512,
+                                     fenland_2=False):
     """
     Predictor for SingleInputKinematicPoseMFShapeGaussianwithGlobCam on unseen test data.
     Input --> ResNet --> image features --> FC layers --> MF over pose and Diagonal Gaussian over shape.
@@ -59,7 +63,6 @@ def optimize_poseMF_shapeGaussian_net(pose_shape_model_male,
     Pose predictions follow the kinematic chain.
     """
     device_index = device.index
-
     # Setting up body visualisation renderer
     body_vis_renderer = TexturedIUVRenderer(device=device,
                                             batch_size=1,
@@ -106,6 +109,10 @@ def optimize_poseMF_shapeGaussian_net(pose_shape_model_male,
         image_fnames = sorted(map(lambda x: x + '.jpg', subset_ids))
     else:
         image_fnames = sorted([f for f in os.listdir(image_dir) if f.endswith(('.jpg', '.png'))])
+
+    if multiprocessing:
+        print('\nMultiprocessing detected so using Matplotlib Agg backend.')
+        matplotlib.use('Agg')
     
     # Processing Data csv for measurement optimization
     progress_bar_images = tqdm(
@@ -118,10 +125,10 @@ def optimize_poseMF_shapeGaussian_net(pose_shape_model_male,
         num_images += 1
         with torch.no_grad():
             # ------------------------- INPUT LOADING AND PROXY REPRESENTATION GENERATION -------------------------
-            image_id = Path(image_fname).stem
+            image_id = re.sub('_P2$', '', Path(image_fname).stem)
             progress_bar_images.set_description('{} - {}'.format(str(device), image_id))
             personal_df = data_df[data_df['Serno'] == image_id]
-            gender = personal_df['Sex'].values[0]
+            gender = personal_df['E_Sex'].values[0]
 
             if gender.strip().upper() == 'M':
                 pose_shape_model = pose_shape_model_male
@@ -442,6 +449,8 @@ def optimize_poseMF_shapeGaussian_net(pose_shape_model_male,
                 combined_vis_cols = 4
                 combined_vis_fig = np.zeros((combined_vis_rows * visualise_wh, combined_vis_cols * visualise_wh, 3),
                                             dtype=body_vis_rgb.dtype)
+                combined_vis_fig_2 = np.zeros((1 * visualise_wh, 3 * visualise_wh, 3),
+                                        dtype=body_vis_rgb.dtype)
                 # Cropped input image
                 combined_vis_fig[:visualise_wh, :visualise_wh] = cropped_for_proxy_rgb.cpu().detach().numpy()[0].transpose(1, 2, 0)
 
@@ -473,11 +482,19 @@ def optimize_poseMF_shapeGaussian_net(pose_shape_model_male,
                 combined_vis_fig[:visualise_wh, 2*visualise_wh:3*visualise_wh] = body_vis_rgb_rot180
                 combined_vis_fig[visualise_wh:2*visualise_wh, 2*visualise_wh:3*visualise_wh] = body_vis_rgb_rot270
 
+                combined_vis_fig_2[:visualise_wh, :visualise_wh] = body_vis_rgb
+                
+
                 # T-pose 3D body
                 combined_vis_fig[:visualise_wh, 3*visualise_wh:4*visualise_wh] = reposed_body_vis_rgb
                 combined_vis_fig[visualise_wh:2*visualise_wh, 3*visualise_wh:4*visualise_wh] = reposed_body_vis_rgb_rot90
+
+                combined_vis_fig_2[:visualise_wh, visualise_wh:2*visualise_wh] = reposed_body_vis_rgb
+                combined_vis_fig_2[:visualise_wh, 2*visualise_wh:3*visualise_wh] = reposed_body_vis_rgb_rot90
+
                 vis_save_path = os.path.join(save_dir, image_fname)
                 cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_optimized.png', combined_vis_fig[:, :, ::-1] * 255)
+                cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_presentation.png', combined_vis_fig_2[:, :, ::-1] * 255)
                 cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_tpose_optimized.png', reposed_body_vis_rgb * 255)
                 cv2.imwrite(os.path.splitext(vis_save_path)[0] + '_tpose_rot90_optimized.png', reposed_body_vis_rgb_rot90 * 255)
 

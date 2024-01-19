@@ -92,7 +92,7 @@ def run_predict(device,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_dir', '-I', type=str, help='Path to directory of test images.', default='/data/cornucopia/em803/dxa_analysis/data/smpl_gen/input')
-    parser.add_argument('--save_dir', '-S', type=str, help='Path to directory where test outputs will be saved.', default='/data/cornucopia/em803/dxa_analysis/data/smpl_gen/output')
+    parser.add_argument('--save_dir', '-S', type=str, help='Path to directory where test outputs will be saved.', default='/data/cornucopia/em803/dxa_analysis/data/smpl_gen/output_predict')
     parser.add_argument('--pose_shape_weights', '-W3D', type=str, default='./model_files/poseMF_shapeGaussian_net_weights.tar')
     parser.add_argument('--pose_shape_cfg', type=str, default=None)
     parser.add_argument('--pose2D_hrnet_weights', '-W2D', type=str, default='./model_files/pose_hrnet_w48_384x288.pth')
@@ -100,8 +100,8 @@ if __name__ == '__main__':
     parser.add_argument('--visualise_samples', '-VS', action='store_true')
     parser.add_argument('--visualise_uncropped', '-VU', action='store_true')
     parser.add_argument('--joints2Dvisib_threshold', '-T', type=float, default=0.75)
-    parser.add_argument('--gender', '-G', type=str, default='neutral', choices=['neutral', 'male', 'female'], help='Gendered SMPL models may be used.')
-    parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--gender', '-G', type=str, default='female', choices=['neutral', 'male', 'female'], help='Gendered SMPL models may be used.')
+    parser.add_argument('--gpu', type=int, default=1)
     args = parser.parse_args()
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
